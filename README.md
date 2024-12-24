@@ -26,6 +26,9 @@ Here, we provide links to our **V2A Instruction Dataset**. Currently, we offer t
    [Download Link](https://drive.google.com/file/d/1ukpU69eysXnhrHOfgSVWf2BHE5E4WuzI/view)  
    This expanded version includes both VGGSound and some additional data from AudioSet, totaling 1.77 million samples.
 
+3. **Extracted eva-CLIP features (5 fps) from VGGSound videos**
+   [Download Link](https://drive.google.com/file/d/1Mgb1CWNqL99q4DWh57derAfDdQeOEkBp/view?usp=drive_link) 
+
 > **Note:** Please check the appropriate licenses and usage rights for VGGSound and AudioSet data before using them in your research.
 
 ## Sample Outputs
