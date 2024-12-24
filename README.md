@@ -15,8 +15,7 @@ This repository contains the **official code, datasets, and sample outputs** for
 If you find this repository helpful in your research, please consider citing our paper (see [Citation](#citation)).
 
 ## Datasets
-Here, we provide links to our **V2A Instruction Dataset** and **extracted video features from visual encoders**. Currently, we offer two versions:
-
+Here, we provide links to our **V2A Instruction Dataset** and **extracted video features from visual encoders**.
 ### V2A Instruction Dataset
 1. **VGGSound Only**  
    [Download Link](https://drive.google.com/file/d/1uo4Hx6tAnqVkU65AfPHGwFAftysTCXxs/view)  
