@@ -15,7 +15,7 @@ This repository contains the **official code, datasets, and sample outputs** for
 If you find this repository helpful in your research, please consider citing our paper (see [Citation](#citation)).
 
 ## Datasets
-Here, we provide links to our **V2A Instruction Dataset**. Currently, we offer two versions:
+Here, we provide links to our **V2A Instruction Dataset** and **extracted video features from visual encoders**. Currently, we offer two versions:
 
 ### V2A Instruction Dataset
 1. **VGGSound Only**  
@@ -26,8 +26,8 @@ Here, we provide links to our **V2A Instruction Dataset**. Currently, we offer t
    [Download Link](https://drive.google.com/file/d/1ukpU69eysXnhrHOfgSVWf2BHE5E4WuzI/view)  
    This expanded version includes both VGGSound and some additional data from AudioSet, totaling 1.77 million samples.
 
-3. **Extracted eva-CLIP features (5 fps) from VGGSound videos**
-   [Download Link](https://drive.google.com/file/d/1Mgb1CWNqL99q4DWh57derAfDdQeOEkBp/view?usp=drive_link) 
+**Extracted eva-CLIP features (5 fps) from VGGSound videos**
+[Download Link](https://drive.google.com/file/d/1Mgb1CWNqL99q4DWh57derAfDdQeOEkBp/view?usp=drive_link) 
 
 > **Note:** Please check the appropriate licenses and usage rights for VGGSound and AudioSet data before using them in your research.
 
