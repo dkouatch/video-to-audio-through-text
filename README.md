@@ -31,7 +31,7 @@ Here, we provide links to our **V2A Instruction Dataset** and **extracted video 
 > **Note:** Please check the appropriate licenses and usage rights for VGGSound and AudioSet data before using them in your research.
 
 ## Code
-We include our full code implementations in vatt folder, including both stages: video-to-caption stage and video+text->audio stage (vt2a). The instructions on how to use the code to train both stages will be updated here below (#TODO).
+We include our full code implementations in vatt folder, including both stages: video-to-caption stage (v2cap) and video+text->audio stage (vt2a). The instructions on how to use the code to train both stages will be updated here below (#TODO).
 
 ## Models Checkpoints
 **VATT Full Models (including LLama and Gemma version, 4 checkpoints in total in the zip file)**
