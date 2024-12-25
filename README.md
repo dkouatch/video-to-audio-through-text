@@ -5,7 +5,6 @@ This repository contains the **official code, datasets, and sample outputs** for
 ## Table of Contents
 1. [Introduction](#introduction)  
 2. [Datasets](#datasets)  
-   - [V2A Instruction Dataset](#v2a-instruction-dataset)
 3. [Code](#code)
 4. [Model Checkpoints](#model-checkpoints)
 5. [Sample Outputs](#sample-outputs)
