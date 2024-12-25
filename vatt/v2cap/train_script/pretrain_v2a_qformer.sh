@@ -9,7 +9,7 @@ cp "$0" ${output_dir}/$(date +"%Y-%m-%d-%H-%M-%S").sh
 
 torchrun --nproc_per_node=1 --master_port=1234 ../pretrain_visual_audio.py \
     --base_model "/pscratch/sd/x/xiuliu/ltu/src/ltu/exp/v2a_lora_finetune_all_qformer/checkpoint-76000/pytorch_model.bin" \
-    --data_path '../../../data/vggsound_v2a_instruction.json' \
+    --data_path '../../../data/dataset_all_v2a_instruction.json' \
     --output_dir $output_dir \
     --batch_size 32 \
     --micro_batch_size 32 \

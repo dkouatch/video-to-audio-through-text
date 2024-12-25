@@ -67,6 +67,6 @@ for file_name, audio_cap in tqdm(caption.items()):
             "split": "train" if "train" in split else "test",
         }
     )
-print("HHHH", len(v2a_instruction))
+
 with open("/pscratch/sd/x/xiuliu/ltu/data/audioset_{}_v2a_instruction.json".format(split), "w+") as fout:
     json.dump(v2a_instruction, fout, indent=2)
