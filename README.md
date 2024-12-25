@@ -15,7 +15,7 @@ This repository contains the **official code, datasets, and sample outputs** for
 If you find this repository helpful in your research, please consider citing our paper (see [Citation](#citation)).
 
 ## Datasets
-Here, we provide links to our **V2A Instruction Dataset** and **extracted video features from visual encoders**.
+Here, we provide links to our **V2A Instruction Dataset** and **extracted video and audio features from visual and audio encoders**.
 ### V2A Instruction Dataset
 1. **VGGSound Only**  
    [Download Link](https://drive.google.com/file/d/1uo4Hx6tAnqVkU65AfPHGwFAftysTCXxs/view)  
@@ -28,6 +28,9 @@ Here, we provide links to our **V2A Instruction Dataset** and **extracted video 
 **Extracted eva-CLIP features (5 fps) from VGGSound videos**
 [Download Link](https://drive.google.com/file/d/1Mgb1CWNqL99q4DWh57derAfDdQeOEkBp/view?usp=drive_link) 
 
+** Extracted audio tokens from VGGSound audio using Encodec-16kHz**
+[Download Link](https://www.dropbox.com/scl/fi/iolaary8vafx1qtbfshu5/meta_pretrain_vgg_encodec_tokens.zip?rlkey=p68919e41yyp9osy525vkq3ig&st=kam53u71&dl=0)
+
 > **Note:** Please check the appropriate licenses and usage rights for VGGSound and AudioSet data before using them in your research.
 
 ## Code
@@ -36,6 +39,9 @@ We include our full code implementations in vatt folder, including both stages: 
 ## Models Checkpoints
 **VATT Full Models (including LLama and Gemma version, 4 checkpoints in total in the zip file)**
 [Download Link](https://www.dropbox.com/scl/fi/2hx009fyvwj2xjk9gnjwq/vatt_models.zip?rlkey=ibjlgr2ztk0oe4zueldtgbrxc&st=u0nnpfiw&dl=0)
+
+**Full AudioGen-Encodec model checkpoint being used for converting tokens back to audio waveform**
+[Download Link](https://www.dropbox.com/scl/fi/9edeh5zpn3rvdx85fx85l/audiogen_models.zip?rlkey=ll14cve5iaftlbhqqaz50heey&st=9lyv4706&dl=0)
 
 
 ## Sample Outputs
