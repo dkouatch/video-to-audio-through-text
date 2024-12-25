@@ -1,0 +1,6 @@
+{
+    "description": "Gemma-2B template",
+    "prompt_input": "<bos><start_of_turn>user",
+    "prompt_no_input": "<bos><start_of_turn>user\n{instruction}<end_of_turn>\n<start_of_turn>model",
+    "response_split": "model"
+}

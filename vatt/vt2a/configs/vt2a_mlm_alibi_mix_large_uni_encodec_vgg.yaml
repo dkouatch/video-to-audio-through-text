@@ -1,0 +1,48 @@
+model:
+  base_learning_rate: 2e-4
+  target: vt2a.modules.vt2a_mlm_alibi_uni_encodec.V2TA
+  params:
+    base_model_path: '../v2cap/pretrained_mdls/vicuna/'
+    start_model_path: '../v2cap/exp/visual_audio_finetune_full_vgg_audioset/checkpoint-117000/pytorch_model.bin'
+    audio_cb_path: '/path/to/meta_pretrain_vgg_encodec_embed.pt'
+    monitor: "val/total_loss"
+    finetune_llm: False
+    dim: 1024
+    num_heads: 16
+    num_layers: 12
+    dec_num_layers: 12
+    dec_num_heads: 16
+    scheduler_config:
+      target: vt2a.lr_scheduler.LambdaLinearScheduler
+      params:
+        warm_up_steps: [ 20000 ] # 40000
+        cycle_lengths: [ 300000 ] # 600000
+        f_start: [ 1.e-6 ]
+        f_max: [ 1. ]
+        f_min: [ 0. ]
+
+data:
+  target: vt2a.vt2a_mlm_train.DataModuleFromConfig
+  params:
+    batch_size: 44
+    num_workers: 11
+    wrap: True
+    tokenizer_path: '../v2cap/pretrained_mdls/vicuna/'
+    train:
+      target: vt2a.data.vt2a_mlm_mix_encodec_dataset.MixDataset
+      params:
+        split: "train"
+        
+
+    validation:
+      target: vt2a.data.vt2a_mlm_mix_encodec_dataset.MixDataset
+      params:
+        split: "test"
+
+lightning:
+  trainer:
+    # gradient_clip_val: 5.0
+    precision: 'bf16'
+    benchmark: True
+    gpus: "0" #,1,2,3
+    num_nodes: 1
