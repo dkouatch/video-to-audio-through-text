@@ -7,7 +7,7 @@ This repository contains the **official code, datasets, and sample outputs** for
 2. [Datasets](#datasets)  
    - [V2A Instruction Dataset](#v2a-instruction-dataset)
 3. [Code](#code)
-4. [Model Checkpoints](#modelckpts)
+4. [Model Checkpoints](#model-checkpoints)
 5. [Sample Outputs](#sample-outputs)
 6. [Citation](#citation)
 
