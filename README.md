@@ -34,7 +34,7 @@ Here, we provide links to our **V2A Instruction Dataset** and **extracted video 
 We include our full code implementations in vatt folder, including both stages: video-to-caption stage and video+text->audio stage (vt2a). The instructions on how to use the code to train both stages will be updated here below (#TODO).
 
 ## Models Checkpoints
-**VATT Full Models (including LLama and Gemma version)**
+**VATT Full Models (including LLama and Gemma version, 4 checkpoints in total in the zip file)**
 [Download Link](https://www.dropbox.com/scl/fi/2hx009fyvwj2xjk9gnjwq/vatt_models.zip?rlkey=ibjlgr2ztk0oe4zueldtgbrxc&st=u0nnpfiw&dl=0)
 
 
