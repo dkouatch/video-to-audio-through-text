@@ -1,6 +1,6 @@
 # VATT-Official
 This repository contains the **official code, datasets, and sample outputs** for our [NeurIPS paper](#citation)  
-**"Tell What You Hear From What You See — Video to Audio Generation Through Text."**
+**"Tell What You Hear From What You See — Video to Audio Generation Through Text."**, accepted as poster in NeurIPS 2024.
 
 ## Table of Contents
 1. [Introduction](#introduction)  
