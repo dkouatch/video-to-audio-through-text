@@ -77,5 +77,21 @@ If you use VATT or refer to our NeurIPS paper, please cite us:
 }
 ```
 
+Or
+
+```
+@inproceedings{NEURIPS2024_b782a346,
+ author = {Liu, Xiulong and Su, Kun and Shlizerman, Eli},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {A. Globerson and L. Mackey and D. Belgrave and A. Fan and U. Paquet and J. Tomczak and C. Zhang},
+ pages = {101337--101366},
+ publisher = {Curran Associates, Inc.},
+ title = {Tell What You Hear From What You See - Video to Audio Generation Through Text},
+ url = {https://proceedings.neurips.cc/paper_files/paper/2024/file/b782a3462ee9d566291cff148333ea9b-Paper-Conference.pdf},
+ volume = {37},
+ year = {2024}
+}
+```
+
 ## Contact
 For any questions regarding the code, model checkpoints and dataset, please reach out directly to [email](xl1995@uw.edu)
