@@ -43,7 +43,7 @@ We include our full code implementations in vatt folder, including both stages: 
 [Download Link](https://www.dropbox.com/scl/fi/o1663dvgavdtgryltqvmq/vatt_models.zip?rlkey=yzk7o6fb6kpdvs7mnke03t3c0&st=ou5y6q3s&dl=0)
 
 **Full AudioGen-Encodec model checkpoint being used for converting tokens back to audio waveform**
-[Download Link](https://www.dropbox.com/scl/fi/9edeh5zpn3rvdx85fx85l/audiogen_models.zip?rlkey=ll14cve5iaftlbhqqaz50heey&st=9lyv4706&dl=0)
+[Download Link](https://www.dropbox.com/scl/fi/48nasacz1qikulwv4nj87/audiogen_models.zip?rlkey=3j4beimh2q8h9rw3jmd1mxqsd&st=lbv24b4c&dl=0)
 
 **Vicuna pretrained checkpoint and finetuned delta weights**
 [Download Link](https://drive.google.com/file/d/1rjg-_DKzpxCxX51gwiFD3vYv3iKBPQNM)
