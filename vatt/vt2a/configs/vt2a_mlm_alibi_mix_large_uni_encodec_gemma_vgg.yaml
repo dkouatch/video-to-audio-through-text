@@ -2,8 +2,8 @@ model:
   base_learning_rate: 1e-4
   target: vt2a.modules.vt2a_mlm_alibi_uni_encodec_gemma.V2TA
   params:
-    base_model_path: '../v2cap/pretrained_mdls/gemma_2b/'
-    start_model_path: '../v2cap/exp/pretrain_all_visual_audio_mix_gemma/checkpoint-231000/pytorch_model.bin'
+    base_model_path: '/path/to/pretrained_mdls/gemma_2b/'
+    start_model_path: '/path/to/gemma/checkpoint-231000/pytorch_model.bin'
     audio_cb_path: '/path/to/meta_pretrain_vgg_encodec_embed.pt'
     monitor: "val/total_loss"
     finetune_llm: False
@@ -24,7 +24,7 @@ model:
 data:
   target: vt2a.vt2a_mlm_train.DataModuleFromConfig
   params:
-    tokenizer_path: '../v2cap/pretrained_mdls/gemma_2b/'
+    tokenizer_path: '/path/to/pretrained_mdls/gemma_2b/'
     batch_size: 44
     num_workers: 11
     wrap: True
@@ -32,14 +32,14 @@ data:
       target: vt2a.data.vt2a_mlm_mix_encodec_dataset.MixDataset
       params:
         split: "train"
-        base_model: '../v2cap/pretrained_mdls/gemma_2b/'
+        base_model: '/path/to/pretrained_mdls/gemma_2b/'
         prompt_template_name: 'gemma'
 
     validation:
       target: vt2a.data.vt2a_mlm_mix_encodec_dataset.MixDataset
       params:
         split: "test"
-        base_model: '../v2cap/pretrained_mdls/gemma_2b/'
+        base_model: '/path/to/pretrained_mdls/gemma_2b/'
         prompt_template_name: 'gemma'
 
 lightning:

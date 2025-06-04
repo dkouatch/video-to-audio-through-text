@@ -1,39 +1,15 @@
-
-import sys
-
-import os
-import random
 import torch
 import torch.nn as nn
-from typing import List
 import numpy as np
-import fire
-import torch
-import transformers
-from datasets import load_dataset
-import sys
-import os, argparse
-from tqdm import tqdm
-
-import torchaudio
-import json
-import torch
-from time import time
 from peft import (
     LoraConfig,
-    get_peft_model,
-    get_peft_model_state_dict,
-    prepare_model_for_int8_training,
-    set_peft_model_state_dict,
+    get_peft_model
 )
-import torch.nn.functional as F
-from transformers import GenerationConfig, GemmaModel, GemmaTokenizer, GemmaConfig
-from utils.prompter import Prompter
+from transformers import GemmaModel
 from vt2a.modules.vt2a_mlm_alibi_uni_encodec import VT2AModel
 import pytorch_lightning as pl
 from vt2a.util import instantiate_from_config
 from torch.optim.lr_scheduler import LambdaLR
-from vt2a.lr_scheduler import NoamScheduler
 from collections import OrderedDict
 
 
@@ -87,7 +63,7 @@ class V2TA(pl.LightningModule):
         if self.use_scheduler:
             self.scheduler_config = scheduler_config
         
-        embed = torch.load("../v2cap/pretrained_mdls/gemma_2b/word_embeds.pth")
+        embed = torch.load("/path/to/pretrained_mdls/gemma_2b/word_embeds.pth")
         self.embed_tokens = nn.Embedding.from_pretrained(embed)
         self.embed_tokens.cpu()
         for name, param in self.embed_tokens.named_parameters():
@@ -100,10 +76,8 @@ class V2TA(pl.LightningModule):
         with torch.no_grad():
             inputs_embeds = self.embed_tokens(input_ids.cpu())
             v_hidden_states = self.encoder.model.encode_all_states(inputs_embeds=inputs_embeds.cuda(), video_input=video_input, attention_mask=attention_mask)[0]
-        # phi = self.get_shift_value_from_step()
-        # mean = self.gaussian_mean_cosine_step()
-        logits, t_masked = self.audio_token_decoder(audio_tokens, v_hidden_states.float(), attention_mask.float()) # phi mean , phi, self.eval_flag , critic_logits, critic_labels 
-        return logits, t_masked #, critic_logits, critic_labels
+        logits, t_masked = self.audio_token_decoder(audio_tokens, v_hidden_states.float(), attention_mask.float())
+        return logits, t_masked
     
     def forward_encoder(self, x, embed_tokens):
         input_ids, video_input, attention_mask = x["input_ids"], x["video_input"], x["attention_mask"]
@@ -126,13 +100,6 @@ class V2TA(pl.LightningModule):
 
     def initialize_encoder(self):
         device_map = "auto"
-        # gemma_2b_small_config = GemmaConfig(
-        #         num_hidden_layers=8,
-        #         num_attention_heads=8,
-        #         num_key_value_heads=1,
-        #         hidden_size=2048,
-        #         intermediate_size=16384,
-        # )
         self.encoder = GemmaModel.from_pretrained(
             self.base_model_path,
             load_embedding=False,
@@ -140,19 +107,12 @@ class V2TA(pl.LightningModule):
             torch_dtype=torch.float16,
             device_map=device_map,
         )
-        # save_embedding=True
-        # if save_embedding:
-        #     torch.save(self.encoder.embed_tokens.weight.data, "../v2cap/pretrained_mdls/gemma_2b/word_embeds.pth")
-        #     exit(0)
-
         for key, param in self.encoder.named_parameters():
             print(key, np.prod(param.size()))
 
-        lora_r, lora_alpha, lora_dropout = 16, 32, 0.0 #5
-        # if self.finetune_llm:
+        lora_r, lora_alpha, lora_dropout = 16, 32, 0.0
         lora_target_modules = ["q_proj", "v_proj"]
-        # else:
-        #     lora_target_modules = ["dummy"]
+
         config = LoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
@@ -167,14 +127,7 @@ class V2TA(pl.LightningModule):
         for key, val in state_dict.items():
             new_state_dict["base_model.model." + key.split(".model.model.")[-1]] = val
         msg = self.encoder.load_state_dict(new_state_dict, strict=False)
-        print(msg)
-        # exit(0)
         for name, param in self.encoder.named_parameters():
-            # if "lora" in name or "video" in name:
-                # print(name)
-                # print(param.requires_grad)
-                # param.requires_grad = True
-                # continue
             param.requires_grad = False
         self.encoder.eval()
     
@@ -184,9 +137,6 @@ class V2TA(pl.LightningModule):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"].half()
         audio_tokens = audio_tokens.to(memory_format=torch.contiguous_format).long()
-        # if bs is not None:
-        #     audio_tokens = audio_tokens[:bs]
-        #     img_embs = img_embs[:bs]
         audio_tokens = audio_tokens.to(self.device)
         img_embs = img_embs.to(self.device)
         input_ids = input_ids.to(self.device)
@@ -194,15 +144,11 @@ class V2TA(pl.LightningModule):
 
         return {"audio_tokens": audio_tokens, "video_input": img_embs, "input_ids": input_ids, "attention_mask": attention_mask}
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch):
         self.eval_flag = False
         inputs = self.get_input(batch, train=True)
-        logits, labels = self(inputs)#, critic_logits, critic_labels = self(inputs)
-        # critic_loss = F.binary_cross_entropy_with_logits(
-        #     critic_logits,#rearrange(critic_logits, '... 1 -> ...'),
-        #     critic_labels
-        # )
-        total_loss = self.loss(logits, labels)# + critic_loss
+        logits, labels = self(inputs)
+        total_loss = self.loss(logits, labels)
         log_dict_tot = {
             "train/total_loss": total_loss.clone().detach().mean()
         }
@@ -220,7 +166,7 @@ class V2TA(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         self.eval_flag = True
         inputs = self.get_input(batch)
-        logits, labels = self(inputs)#, _, _ = self(inputs)
+        logits, labels = self(inputs)
         total_loss = self.loss(logits, labels)
         log_dict_tot = {
             "val/total_loss": total_loss.clone().detach().mean()
@@ -231,7 +177,6 @@ class V2TA(pl.LightningModule):
 
     def configure_optimizers(self):
         lr = self.learning_rate
-        # opt = torch.optim.AdamW([param for param in self.parameters() if param.requires_grad == True], lr=lr)
         params = []
         for name, param in self.named_parameters():
             if name.startswith('model.quantizer'):
@@ -270,8 +215,6 @@ class V2TA(pl.LightningModule):
         mean = 0.25 + (0.95 - 0.25) * np.sin( self.global_step / cycle_lengths * np.pi / 2)
         return mean
 
-
-
     @torch.no_grad()
     def generate_audio(self, x, mask_temperature=25.5, temp=1.0, cfg_coef=5.):
         self.embed_tokens.cpu()
@@ -280,22 +223,3 @@ class V2TA(pl.LightningModule):
         v_hidden_states = self.encoder.model.encode_all_states(inputs_embeds=inputs_embeds.cuda(), video_input=video_input, attention_mask=attention_mask)[0]
         out = self.audio_token_decoder.generate_audio_sample(v_hidden_states.float(), attention_mask.float(), mask_temperature=mask_temperature, sampling_temperature=temp, cfg_coef=cfg_coef)
         return out
-    
-    @torch.no_grad()
-    def generate_audio_with_critic(self, x, mask_temperature=25.5, temp=1.0, cfg_coef=5.):
-        self.embed_tokens.cpu()
-        input_ids, video_input, attention_mask = x["input_ids"], x["video_input"], x["attention_mask"]
-        inputs_embeds = self.embed_tokens(input_ids.cpu())
-        v_hidden_states = self.encoder.model.encode_all_states(inputs_embeds=inputs_embeds.cuda(), video_input=video_input, attention_mask=attention_mask)[0]
-        out = self.audio_token_decoder.generate_audio_sample_critic(v_hidden_states.float(), attention_mask.float(), mask_temperature=mask_temperature, sampling_temperature=temp, cfg_coef=cfg_coef)
-        return out
-
-    @torch.no_grad()
-    def generate_audio_refine(self, x, mask_temperature=25.5, temp=1.0, cfg_coef=5.):
-        self.embed_tokens.cpu()
-        input_ids, video_input, attention_mask = x["input_ids"], x["video_input"], x["attention_mask"]
-        inputs_embeds = self.embed_tokens(input_ids.cpu())
-        v_hidden_states = self.encoder.model.encode_all_states(inputs_embeds=inputs_embeds.cuda(), video_input=video_input, attention_mask=attention_mask)[0]
-        out = self.audio_token_decoder.generate_audio_sample_refine(v_hidden_states.float(), attention_mask.float(), mask_temperature=mask_temperature, sampling_temperature=temp, cfg_coef=cfg_coef)
-        return out
-        

@@ -14,7 +14,7 @@ from typing import List, Callable, Optional
 from einops import rearrange, repeat, reduce
 from einops.layers.torch import Rearrange
 
-from vt2a.modules.custom_attend import Attend, Intermediates, CascadingHeads
+from third_party.x_transformers.custom_attend import Attend, Intermediates, CascadingHeads
 
 
 import copy
@@ -1411,7 +1411,7 @@ class MultiwayNetwork(nn.Module):
             y1, y2 = self.B(x1), self.A(x2)
         return torch.cat([y1, y2], dim=self.dim)
 
-class EncoderAttentionLayersKS(nn.Module):
+class EncoderAttentionLayersXL(nn.Module):
     def __init__(
         self,
         dim,
@@ -1794,7 +1794,7 @@ class EncoderAttentionLayersKS(nn.Module):
         return x
     
 
-class EncoderKS(EncoderAttentionLayersKS):
+class EncoderXL(EncoderAttentionLayersXL):
     def __init__(self, **kwargs):
         assert 'causal' not in kwargs, 'cannot set causality on encoder'
         super().__init__(causal=False, **kwargs)

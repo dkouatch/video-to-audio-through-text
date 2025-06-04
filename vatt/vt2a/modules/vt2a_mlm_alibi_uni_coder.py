@@ -4,11 +4,9 @@ import typing as tp
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from vt2a.modules.custom_transformers import ContinuousTransformerWrapper, EncoderKS
+from third_party.x_transformers.custom_transformers import ContinuousTransformerWrapper, EncoderXL
 from einops import rearrange, repeat
 from vt2a.modules.pos_embed import np_get_1d_sincos_pos_embed
-import numpy as np
-from vt2a.modules.custom_quantize import ResidualVectorQuantize
 from torch.nn.utils import weight_norm
 from typing import Optional
 from typing import Tuple
@@ -36,16 +34,9 @@ def gumbel_noise(t):
 def gumbel_sample(t, temperature=1., dim=-1):
     B, T, C = t.shape
     noise_vector = gumbel_noise(t)
-    # logits_with_temp = t / max(temperature, 1e-10)
     log_prob = torch.log_softmax(t, dim=dim)
     noisy_logits = log_prob / max(temperature, 1e-10) + noise_vector
     token_probs, tokens = torch.max(noisy_logits, dim=dim)
-    # confid_score = log_prob
-    # confid_score = confid_score.reshape(B * T, -1)
-    # token_probs = confid_score[range(len(confid_score)), tokens.view(-1)].view(tokens.shape)
-    # print(token_probs.shape, token_probs)
-    # temp = t.reshape(B * T, -1)
-    # token_probs = temp[range(len(temp)), tokens.view(-1)].view(tokens.shape)
     return token_probs, tokens
 
 def gumbel_sample_v1(t, temperature=1., dim=-1):
@@ -101,7 +92,6 @@ def random_b2(
         r: torch.Tensor
 ):
 
-    # r = _gamma(r)[:, None, None]
     probs = torch.ones_like(x) * r[:, None, None].to(x.device)
 
     mask = torch.bernoulli(probs)
@@ -402,13 +392,12 @@ class VT2AModel(nn.Module):
         self.quantizer = torch.load(audio_cb_path, map_location=device)
         self.modality_v = nn.Parameter(torch.zeros(1, 1, dim))
         self.modality_a = nn.Parameter(torch.zeros(1, 1, dim))
-        # self.cls_token = nn.Parameter(torch.zeros(1, 1, dim))
         self.pos_embed = nn.Parameter(torch.zeros(1,  self.visual_seq_len + self.audio_seq_len, dim), requires_grad=False)
         self.encoder = ContinuousTransformerWrapper(
             max_seq_len=self.audio_seq_len + visual_seq_len,
             use_abs_pos_emb=False,
             emb_dropout = 0.1,  # dropout after embedding
-            attn_layers=EncoderKS(
+            attn_layers=EncoderXL(
                 dim=dim,
                 depth=num_layers,
                 heads=num_heads,
@@ -423,12 +412,11 @@ class VT2AModel(nn.Module):
             )
         )
 
-        # self.decoder_pos_embed_learned  = nn.Parameter(torch.zeros(1, self.visual_seq_len + self.audio_seq_len, dim))
         self.decoder = ContinuousTransformerWrapper(
             max_seq_len=self.visual_seq_len + self.audio_seq_len,
             use_abs_pos_emb=False,
             emb_dropout = 0.1,  # dropout after embedding
-            attn_layers=EncoderKS(
+            attn_layers=EncoderXL(
                 dim=dim,
                 depth=dec_num_layers,
                 heads=dec_num_heads,
@@ -452,7 +440,6 @@ class VT2AModel(nn.Module):
         # Add final conv layer
         self.n_codebooks = n_codebooks
         self.classifier = nn.ModuleList([nn.Linear(dim, num_tokens, bias=False) for _ in range(n_codebooks)])
-        # self.critic_head = nn.ModuleList([nn.Linear(dim, 1) for _ in range(n_codebooks)])
         if not use_eva_clip:
             self.img_linear = nn.Linear(encoder_dim, dim)
         elif dim != 768:
@@ -505,12 +492,10 @@ class VT2AModel(nn.Module):
             init_fn = partial(init_layer, method=weight_init, init_depth=depth, zero_bias_init=zero_bias_init)
             tr_layer.apply(init_fn)
 
-        pos_embed = np_get_1d_sincos_pos_embed(self.pos_embed.shape[-1], self.audio_seq_len + self.visual_seq_len, cls_token=False)
+        pos_embed = np_get_1d_sincos_pos_embed(self.pos_embed.shape[-1], self.audio_seq_len + self.visual_seq_len)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
-        # torch.nn.init.normal_(self.cls_token, std=.02)
         torch.nn.init.normal_(self.modality_a, std=.02)
         torch.nn.init.normal_(self.modality_v, std=.02)
-        # torch.nn.init.normal_(self.decoder_pos_embed_learned, std=.02)
 
     # @torch.no_grad()
     def audio_only(self, a):
@@ -538,73 +523,20 @@ class VT2AModel(nn.Module):
         v = v + self.pos_embed[:, :v.shape[1]] + self.modality_v
         a = a + self.pos_embed[:, v.shape[1]:] + self.modality_a
         av_embs = self.encoder(torch.cat([v, a], dim=1), split_pos=v.shape[1], av_order=['v', 'a'])
-        # av_embs = self.decoder(av_embs)
         return torch.mean(av_embs, dim=1)
     
-    def contrastive_forward(self, a, v):
-        v = self.img_linear(v)
-        a = self.embedding.from_codes(a, self.quantizer)
-        a = self.embedding(a)
-        a = rearrange(a, "b d t -> b t d")
-        v_embs = self.encoder(v + self.pos_embed[:, :v.shape[1]] + self.modality_v, split_pos=-1)
-        a_embs = self.encoder(a + self.pos_embed[:, v.shape[1]:] + self.modality_a, split_pos=0)
-        v_embs = F.normalize(self.ct_v_linear(v_embs.mean(dim=1)), dim=-1)
-        a_embs = F.normalize(self.ct_a_linear(a_embs.mean(dim=1)), dim=-1)
-        return a_embs, v_embs
-    
-    def forward(self, a, v, pad_mask, return_embs=False, return_logits=True): # phi mean  phi, eval_flag,
-        # print('unflatten a')
-        # print(a)
-        # flat_a = codebook_flatten(a)
-        # print('flat a')
-        # print(flat_a.shape)
-        # print(flat_a)
-        
+    def forward(self, a, v, pad_mask, return_logits=True):
         v = self.img_linear(v)
         B, K, T = a.shape
-        # get random probability
-        # if not eval_flag:
-            # mask_ratio_std = 0.25
-            # mask_ratio_min = 0.0
-            # mask_ratio_max = 1.0
-            # mask_ratio_generator = stats.truncnorm((mask_ratio_min - mean)/mask_ratio_std,
-            #                                             (mask_ratio_max - mean)/mask_ratio_std,
-            #                                             loc=mean, scale=mask_ratio_std)
         r = self.mask_ratio_generator.rvs(1)[0]
         mask = random_b(a, r)
-
-            # t = uniform((B, ), device=v.device)
-            # r = variable_cosine_schedule(t, phi)
-            # mask = random_b2(a, r)
-        
-        # mask = self.forward_confidence_to_get_mask(a, v, pad_mask, r)
-        # self.train()
-            
-        # else:
-        #     t = uniform((B, ), device=v.device)
-        #     # r = variable_cosine_schedule(t, phi)
-        #     r = cosine_schedule(t)
-        #     mask = random_b2(a, r)
-
-        # mask = random_b2(a, t)
-        # print(mask)
-        # mask = codebook_unmask(mask, self.n_conditioning_codebooks)
-        # print(mask)
         masked_a, mask = apply_mask(a, mask, mask_token=self.mask_token)
         target = codebook_flatten(a)
         flat_mask = codebook_flatten(mask)
         # replace target with ignore index for masked tokens
         t_masked = target.masked_fill(~flat_mask.bool(), -1)
         masked_a = self.embedding.from_codes(masked_a, self.quantizer)
-        # print(masked_a.shape)
-        # B, 8, T, K
-        # masked_a = rearrange(masked_a, 'b d t k -> b t k d')
         masked_a = self.embedding(masked_a)
-        # masked_a = rearrange(masked_a, "b d t -> b t d")
-        # print("HHH", masked_a.shape, self.pos_embed[:, v.shape[1]:].shape)
-        # masked_a = rearrange(masked_a, 'b t k d -> b (t k) d')
-        # v = v + self.pos_embed[:, :v.shape[1]] + self.modality_v
-        # print(v.shape)
         masked_a = masked_a + self.pos_embed[:, v.shape[1]:][:, :masked_a.shape[1]] + self.modality_a
         if return_embs:
             v_embs = self.encoder(v + self.pos_embed[:, :v.shape[1]] + self.modality_v, split_pos=-1)
@@ -621,79 +553,16 @@ class VT2AModel(nn.Module):
         extend_mask = torch.cat([pad_mask, torch.ones(masked_a.shape[0], masked_a.shape[1]).to(masked_a.device)], dim=1)
         extend_mask = (extend_mask > 0)
         latents = self.encoder(torch.cat([v, masked_a], dim=1), split_pos=v.shape[1], av_order=['v', 'a'], mask=extend_mask)
-        
-        # v_cond = torch.repeat_interleave(latents[:, :v.shape[1], :], 50, dim=1)
-        # B, K, T, D
-        # dec_input = latents + self.decoder_pos_embed_learned
-        # out: b, t, d
         out = self.decoder(latents, mask=extend_mask)
         # logits: b, k, t, d
         logits = torch.stack([self.classifier[k](out[:, v.shape[1]:, :]) for k in range(K)], dim=1)
         logits = rearrange(logits, "b k t d -> b d (k t)")
-        return logits, t_masked        
-        # sampled_ids = gumbel_sample_v1(logits, temperature = 1.0)
-        # logits = rearrange(logits, "b k t d -> b d (k t)")
-        # # print(mask.shape, sampled_ids.shape)
-        # generated = torch.where(mask.bool(), sampled_ids, a) # 22, 4, 500
-        # generated = self.embedding.from_codes(generated, self.quantizer)
-        # generated = self.embedding(generated)
-        # generated = generated + self.pos_embed[:, v.shape[1]:][:, :generated.shape[1]] + self.modality_a
-        # latents_2 = self.encoder(torch.cat([v, generated], dim=1), split_pos=v.shape[1], av_order=['v', 'a'], mask=extend_mask)
-        # out_2 = self.decoder(latents_2, mask=extend_mask)
-        # critic_logits = torch.stack([self.critic_head[k](out_2[:, v.shape[1]:, :]) for k in range(K)], dim=1)
-        # critic_logits = critic_logits.squeeze(-1)#rearrange(critic_logits, "b k t d -> b d (k t)")
-        # critic_labels = (sampled_ids != a).float()
-
-
-
-        # return logits, t_masked, critic_logits, critic_labels
-    
-    @torch.no_grad()
-    def forward_confidence_to_get_mask(self, a, v, pad_mask, mask_ratio):
-        self.eval()
-        B, K, T = a.shape
-        mask = torch.ones_like(a).to(v.device).long()
-        masked_a, mask = apply_mask(a, mask, mask_token=self.mask_token)
-        target = codebook_flatten(a)
-        flat_mask = codebook_flatten(mask)
-        # replace target with ignore index for masked tokens
-        t_masked = target.masked_fill(~flat_mask.bool(), -1)
-        masked_a = self.embedding.from_codes(masked_a, self.quantizer)
-        masked_a = self.embedding(masked_a)
-        masked_a = masked_a + self.pos_embed[:, v.shape[1]:][:, :masked_a.shape[1]] + self.modality_a
-        if random.random() < 0.1:
-            v = torch.zeros_like(v) + self.pos_embed[:, :v.shape[1]] + self.modality_v
-        else:
-            v = v + self.pos_embed[:, :v.shape[1]] + self.modality_v
-        extend_mask = torch.cat([pad_mask, torch.ones(masked_a.shape[0], masked_a.shape[1]).to(masked_a.device)], dim=1)
-        extend_mask = (extend_mask > 0)
-        latents = self.encoder(torch.cat([v, masked_a], dim=1), split_pos=v.shape[1], av_order=['v', 'a'], mask=extend_mask)
-        out = self.decoder(latents, mask=extend_mask)
-        # logits: b, k, t, d
-        logits = torch.stack([self.classifier[k](out[:, v.shape[1]:, :]) for k in range(K)], dim=1)
-        logits = rearrange(logits, "b k t d -> b (k t) d")
-        sampled_a, selected_probs = sample_from_logits(
-                logits, sample=True,
-                temperature=1.0,
-                typical_filtering=False,
-                typical_mass=0.1,
-                typical_min_tokens=1,
-                top_k=256,
-                top_p=None,
-                return_probs=True,
-            )
-        num_to_mask = torch.tensor([K * T * mask_ratio]).unsqueeze(1).long().to(v.device)
-        mask_temperature = 2.0
-        mask = mask_by_random_topk(
-                num_to_mask, selected_probs, mask_temperature * torch.tensor(1.0).to(v.device)
-            ).bool().long()
-        mask = codebook_unflatten(mask, K)
-        return mask
+        return logits, t_masked
 
     @torch.no_grad()
     def generate_audio_sample(self, v, pad_mask,
                               sampling_temperature=1.,
-                              sampling_steps=16, #36,
+                              sampling_steps=16,
                               mask_temperature: float = 10.5,
                               typical_filtering=False,
                               typical_mass=0.2,
@@ -732,11 +601,6 @@ class VT2AModel(nn.Module):
             extend_mask = (extend_mask > 0)
 
             dec_input = self.encoder(torch.cat([enc_input, uncond_enc_input], dim=0), split_pos=v.shape[1], av_order=['v', 'a'], mask=extend_mask)
-            # dec_input = self.encoder(torch.cat([v, audio_emb_tokens], dim=1), split_pos=v.shape[1], av_order=['v', 'a'])
-            # uncond_dec_input = self.encoder(torch.cat([null_v, audio_emb_tokens], dim=1), split_pos=v.shape[1], av_order=['v', 'a'])
-            # B, K, T, D
-            # dec_input = latents + self.decoder_pos_embed_learned
-            # out: b, t, d
             out = self.decoder(dec_input, mask=extend_mask)
             # uncond_out = self.decoder(uncond_dec_input)
             # logits: b, k, t, d
@@ -791,416 +655,10 @@ class VT2AModel(nn.Module):
             )
             masked_a = codebook_unflatten(masked_a, n_infer_codebooks)
             mask = codebook_unflatten(mask, n_infer_codebooks)
-            # add conditioning codebooks back to z_masked
-            # masked_a = torch.cat(
-            #     (a[:, :self.n_conditioning_codebooks, :], masked_a), dim=1
-            # )
+
         # add conditioning codebooks back to sampled_z
         sampled_a = codebook_unflatten(sampled_a, n_infer_codebooks)
-        # sampled_a = torch.cat(
-        #     (a[:, :self.n_conditioning_codebooks, :], sampled_a), dim=1
-        # )
         return sampled_a
-    
-
-    @torch.no_grad()
-    def generate_audio_sample_cond_text(self, v, v_t, pad_mask,
-                              sampling_temperature=1.,
-                              sampling_steps=16, #36,
-                              mask_temperature: float = 10.5,
-                              typical_filtering=False,
-                              typical_mass=0.2,
-                              typical_min_tokens=1,
-                              top_p=None,
-                              sample_cutoff: float = 1.0,
-                              cfg_coef = 3.0,
-                              ):
-        # b k t
-        shape = (v.shape[0], 4, 500)
-        v = self.img_linear(v)
-        # v_t = self.img_linear(v_t)
-        null_v = torch.zeros_like(v).to(v.device) + self.pos_embed[:, :v.shape[1]] + self.modality_v
-        # null_vt = torch.zeros_like(v_t).to(v_t.device) + self.pos_embed[:, :v_t.shape[1]] + self.modality_v
-        
-        v = v + self.pos_embed[:, :v.shape[1]] + self.modality_v
-
-        # v_t = v_t + self.pos_embed[:, :v_t.shape[1]] + self.modality_v
-        
-        a = torch.full(shape, self.mask_token, dtype=torch.long).to(v.device)
-        mask = torch.ones_like(a).to(v.device).int()
-        # apply the mask to z
-        masked_a = a.masked_fill(mask.bool(), self.mask_token)
-
-        # how many mask tokens to begin with?
-        num_mask_tokens_at_start = (masked_a == self.mask_token).sum()
-        # how many codebooks are we inferring vs conditioning on?
-        n_infer_codebooks = self.n_codebooks
-
-        for i in range(sampling_steps):
-            r = scalar_to_batch_tensor((i + 1) / sampling_steps, a.shape[0]).to(a.device)
-            # get latents
-            audio_emb_tokens = self.embedding.from_codes(masked_a, self.quantizer)
-            audio_emb_tokens = self.embedding(audio_emb_tokens)
-            # audio_emb_tokens = rearrange(audio_emb_tokens, "b d t -> b t d")
-            # audio_emb_tokens_t = audio_emb_tokens + self.pos_embed[:, v_t.shape[1]:][:, :audio_emb_tokens.shape[1]] + self.modality_a
-            audio_emb_tokens_v = audio_emb_tokens + self.pos_embed[:, v.shape[1]:][:, :audio_emb_tokens.shape[1]] + self.modality_a
-            # enc_input = torch.cat([v_t, audio_emb_tokens_t], dim=1)
-            # uncond_enc_input_t = torch.cat([null_vt, audio_emb_tokens_t], dim=1)
-            uncond_enc_input_v = torch.cat([null_v, audio_emb_tokens_v], dim=1)
-            enc_input_v = torch.cat([v, audio_emb_tokens_v], dim=1)
-
-            # extend_mask = torch.cat([pad_mask, torch.ones(audio_emb_tokens_t.shape[0], audio_emb_tokens_t.shape[1]).to(audio_emb_tokens_t.device)], dim=1)
-            # extend_mask = (extend_mask > 0)
-
-            # dec_input = self.encoder(torch.cat([enc_input, uncond_enc_input_t], dim=0), split_pos=v_t.shape[1], av_order=['v', 'a'])
-            
-            dec_input_v = self.encoder(torch.cat([enc_input_v, uncond_enc_input_v], dim=0), split_pos=v.shape[1], av_order=['v', 'a'])
-            
-            # dec_input = self.encoder(torch.cat([v, audio_emb_tokens], dim=1), split_pos=v.shape[1], av_order=['v', 'a'])
-            # uncond_dec_input = self.encoder(torch.cat([null_v, audio_emb_tokens], dim=1), split_pos=v.shape[1], av_order=['v', 'a'])
-            # B, K, T, D
-            # dec_input = latents + self.decoder_pos_embed_learned
-            # out: b, t, d
-            # out = self.decoder(dec_input)
-            out_v = self.decoder(dec_input_v)
-            # uncond_out = self.decoder(uncond_dec_input)
-            # logits: b, k, t, d
-            # audio_logits_t = torch.stack([self.classifier[k](out[:1, v_t.shape[1]:]) for k in range(4)], dim=1)
-            # uncond_audio_logits_t = torch.stack([self.classifier[k](out[1:, v_t.shape[1]:]) for k in range(4)], dim=1)
-            audio_logits_v = torch.stack([self.classifier[k](out_v[:1, v.shape[1]:]) for k in range(4)], dim=1)
-            uncond_audio_logits_v = torch.stack([self.classifier[k](out_v[1:, v.shape[1]:]) for k in range(4)], dim=1)
-
-            # audio_logits_v_gen = uncond_audio_logits + (audio_logits_v - uncond_audio_logits) * cfg_coef
-            # audio_logits_t_gen = uncond_audio_logits + (audio_logits_t - uncond_audio_logits) * cfg_coef
-            # audio_logits = audio_logits_v_gen + (audio_logits_t_gen - audio_logits_v_gen) * 3.0
-            audio_logits = uncond_audio_logits_v + (audio_logits_v - uncond_audio_logits_v) * 4.5 #(audio_logits_t - audio_logits_v) * 1.0 +
-
-
-            # b (d k) t -> b d (t k) -> b (t k) d
-            audio_logits = rearrange(audio_logits, "b k t d -> b (k t) d")
-            b = audio_logits.shape[0]
-            # b (k t) d
-            sampled_a, selected_probs = sample_from_logits(
-                audio_logits, sample=(
-                        (i / sampling_steps) <= sample_cutoff
-                ),
-                temperature=1.0,
-                typical_filtering=typical_filtering,
-                typical_mass=typical_mass,
-                typical_min_tokens=typical_min_tokens,
-                top_k=256,
-                top_p=top_p,
-                return_probs=True,
-            )
-            # flatten z_masked and mask, so we can deal with the sampling logic
-            # we'll unflatten them at the end of the loop for the next forward pass
-            # remove conditioning codebooks, we'll add them back at the end
-            # b k t -> b (t k)
-            masked_a = codebook_flatten(masked_a)
-
-            mask = (masked_a == self.mask_token).int()
-            # print(masked_a.shape, sampled_a.shape, mask.shape)
-            sampled_a = torch.where(mask.bool(), sampled_a, masked_a)
-            selected_probs = torch.where(
-                mask.bool(), selected_probs, torch.inf
-            )
-            num_to_mask = torch.floor(_gamma(r) * num_mask_tokens_at_start).unsqueeze(1).long()
-            if i != (sampling_steps - 1):
-                num_to_mask = torch.maximum(
-                    torch.tensor(1),
-                    torch.minimum(
-                        mask.sum(dim=-1, keepdim=True) - 1,
-                        num_to_mask
-                    )
-                )
-            # new mask
-            mask = mask_by_random_topk(
-                num_to_mask, selected_probs, mask_temperature * (1 - r)
-            )
-            # update mask
-            masked_a = torch.where(
-                mask.bool(), self.mask_token, sampled_a
-            )
-            masked_a = codebook_unflatten(masked_a, n_infer_codebooks)
-            mask = codebook_unflatten(mask, n_infer_codebooks)
-            # add conditioning codebooks back to z_masked
-            # masked_a = torch.cat(
-            #     (a[:, :self.n_conditioning_codebooks, :], masked_a), dim=1
-            # )
-        # add conditioning codebooks back to sampled_z
-        sampled_a = codebook_unflatten(sampled_a, n_infer_codebooks)
-        # sampled_a = torch.cat(
-        #     (a[:, :self.n_conditioning_codebooks, :], sampled_a), dim=1
-        # )
-        return sampled_a
-    
-
-    @torch.no_grad()
-    def generate_audio_sample_critic(self, v, pad_mask,
-                              sampling_temperature=1.,
-                              sampling_steps=16, #36,
-                              mask_temperature: float = 10.5,
-                              typical_filtering=False,
-                              typical_mass=0.2,
-                              typical_min_tokens=1,
-                              top_p=None,
-                              sample_cutoff: float = 1.0,
-                              cfg_coef = 3.0,
-                              ):
-        # b k t
-        shape = (v.shape[0], 4, 500)
-        v = self.img_linear(v)
-        null_v = torch.zeros_like(v).to(v.device) + self.pos_embed[:, :v.shape[1]] + self.modality_v
-        v = v + self.pos_embed[:, :v.shape[1]] + self.modality_v
-        
-        a = torch.full(shape, self.mask_token, dtype=torch.long).to(v.device)
-        mask = torch.ones_like(a).to(v.device).int()
-        # apply the mask to z
-        masked_a = a.masked_fill(mask.bool(), self.mask_token)
-
-        # how many mask tokens to begin with?
-        num_mask_tokens_at_start = (masked_a == self.mask_token).sum()
-        # how many codebooks are we inferring vs conditioning on?
-        n_infer_codebooks = self.n_codebooks
-
-        for i in range(sampling_steps):
-            r = scalar_to_batch_tensor((i + 1) / sampling_steps, a.shape[0]).to(a.device)
-            # get latents
-            audio_emb_tokens = self.embedding.from_codes(masked_a, self.quantizer)
-            audio_emb_tokens = self.embedding(audio_emb_tokens)
-            # audio_emb_tokens = rearrange(audio_emb_tokens, "b d t -> b t d")
-            audio_emb_tokens = audio_emb_tokens + self.pos_embed[:, v.shape[1]:][:, :audio_emb_tokens.shape[1]] + self.modality_a
-            enc_input = torch.cat([v, audio_emb_tokens], dim=1)
-            uncond_enc_input = torch.cat([null_v, audio_emb_tokens], dim=1)
-
-            extend_mask = torch.cat([pad_mask, torch.ones(audio_emb_tokens.shape[0], audio_emb_tokens.shape[1]).to(audio_emb_tokens.device)], dim=1)
-            extend_mask = (extend_mask > 0)
-
-            dec_input = self.encoder(torch.cat([enc_input, uncond_enc_input], dim=0), split_pos=v.shape[1], av_order=['v', 'a'])
-            out = self.decoder(dec_input)
-            # logits: b, k, t, d
-            audio_logits = torch.stack([self.classifier[k](out[:1, v.shape[1]:]) for k in range(4)], dim=1)
-            uncond_audio_logits = torch.stack([self.classifier[k](out[1:, v.shape[1]:]) for k in range(4)], dim=1)
-            audio_logits = uncond_audio_logits + (audio_logits - uncond_audio_logits) * cfg_coef
-            
-            # b (d k) t -> b d (t k) -> b (t k) d
-            audio_logits = rearrange(audio_logits, "b k t d -> b (k t) d")
-
-            b = audio_logits.shape[0]
-            # b (k t) d
-            sampled_a, selected_probs = sample_from_logits(
-                audio_logits, sample=(
-                        (i / sampling_steps) <= sample_cutoff
-                ),
-                temperature=sampling_temperature,
-                typical_filtering=typical_filtering,
-                typical_mass=typical_mass,
-                typical_min_tokens=typical_min_tokens,
-                top_k=256,
-                top_p=top_p,
-                return_probs=True,
-            )
-            masked_a = codebook_flatten(masked_a)
-            mask = (masked_a == self.mask_token).int()
-            generated_raw = torch.where(mask.bool(), sampled_a, masked_a)
-            generated = codebook_unflatten(generated_raw, n_infer_codebooks)
-            generated = self.embedding.from_codes(generated, self.quantizer)
-            generated = self.embedding(generated)
-            generated = generated + self.pos_embed[:, v.shape[1]:][:, :generated.shape[1]] + self.modality_a
-            latents_2 = self.encoder(torch.cat([v, generated], dim=1), split_pos=v.shape[1], av_order=['v', 'a'], mask=extend_mask)
-            out_2 = self.decoder(latents_2, mask=extend_mask)
-            critic_logits = torch.stack([self.critic_head[k](out_2[:, v.shape[1]:, :]) for k in range(4)], dim=1)
-            critic_logits = critic_logits.squeeze(-1)
-            critic_probs = torch.sigmoid(critic_logits)
-            # print(i, critic_probs[0], selected_probs[0])
-            critic_logits = codebook_flatten(critic_logits)
-            # flatten z_masked and mask, so we can deal with the sampling logic
-            # we'll unflatten them at the end of the loop for the next forward pass
-            # remove conditioning codebooks, we'll add them back at the end
-            # b k t -> b (t k)
-            # masked_a = codebook_flatten(masked_a)
-
-            # mask = (masked_a == self.mask_token).int()
-            # print(masked_a.shape, sampled_a.shape, mask.shape)
-            # sampled_a = torch.where(mask.bool(), sampled_a, masked_a)
-            # selected_probs = torch.where(
-            #     mask.bool(), selected_probs, torch.inf
-            # )
-            num_to_mask = torch.floor(_gamma(r) * num_mask_tokens_at_start).unsqueeze(1).long()
-            if i != (sampling_steps - 1):
-                num_to_mask = torch.maximum(
-                    torch.tensor(1),
-                    torch.minimum(
-                        mask.sum(dim=-1, keepdim=True) - 1,
-                        num_to_mask
-                    )
-                )
-
-            noise = gumbel_noise_like(critic_logits)
-            confidence = - (critic_logits + mask_temperature * (1 - r) * noise)
-            sorted_confidence, sorted_idx = confidence.sort(dim=-1)
-            # get the cut off threshold, given the mask length
-            cut_off = torch.take_along_dim(
-                sorted_confidence, num_to_mask, axis=-1
-            )
-            # mask out the tokens
-            mask = confidence < cut_off
-
-            # update mask
-            # print("HHH", mask.shape, generated_raw.shape)
-            masked_a = torch.where(
-                mask.bool(), self.mask_token, generated_raw
-            )
-            masked_a = codebook_unflatten(masked_a, n_infer_codebooks)
-            mask = codebook_unflatten(mask, n_infer_codebooks)
-            # add conditioning codebooks back to z_masked
-            # masked_a = torch.cat(
-            #     (a[:, :self.n_conditioning_codebooks, :], masked_a), dim=1
-            # )
-        # add conditioning codebooks back to sampled_z
-        generated_raw = codebook_unflatten(generated_raw, n_infer_codebooks)
-        # sampled_a = torch.cat(
-        #     (a[:, :self.n_conditioning_codebooks, :], sampled_a), dim=1
-        # )
-        return generated_raw
-    
-    @torch.no_grad()  
-    def generate_audio_sample_refine(self, v, pad_mask,
-                                sampling_temperature=1.,
-                                sampling_steps=16, #36,
-                                mask_temperature: float = 10.5,
-                                typical_filtering=False,
-                                typical_mass=0.2,
-                                typical_min_tokens=1,
-                                top_p=None,
-                                sample_cutoff: float = 1.0,
-                                cfg_coef = 3.0,):
-            mask_temperature = 3.5
-            thres = int(sampling_steps * 0.5) + 1
-            # b k t
-            shape = (v.shape[0], 4, 500)
-            v = self.img_linear(v)
-            null_v = torch.zeros_like(v).to(v.device) + self.pos_embed[:, :v.shape[1]] + self.modality_v
-            v = v + self.pos_embed[:, :v.shape[1]] + self.modality_v
-            
-            a = torch.full(shape, self.mask_token, dtype=torch.long).to(v.device)
-            mask = torch.ones_like(a).to(v.device).int()
-            # apply the mask to z
-            masked_a = a.masked_fill(mask.bool(), self.mask_token)
-
-            # how many mask tokens to begin with?
-            num_mask_tokens_at_start = (masked_a == self.mask_token).sum()
-            # how many codebooks are we inferring vs conditioning on?
-            n_infer_codebooks = self.n_codebooks
-            mask_before_half = None
-            for i in range(sampling_steps + (sampling_steps - thres)):
-                if i < sampling_steps:
-                    r = scalar_to_batch_tensor((i + 1) / sampling_steps, a.shape[0]).to(a.device)
-                else:
-                    r = scalar_to_batch_tensor((i - sampling_steps + thres) / sampling_steps, a.shape[0]).to(a.device)
-                # get latents
-                audio_emb_tokens = self.embedding.from_codes(masked_a, self.quantizer)
-                audio_emb_tokens = self.embedding(audio_emb_tokens)
-                # audio_emb_tokens = rearrange(audio_emb_tokens, "b d t -> b t d")
-                audio_emb_tokens = audio_emb_tokens + self.pos_embed[:, v.shape[1]:][:, :audio_emb_tokens.shape[1]] + self.modality_a
-                enc_input = torch.cat([v, audio_emb_tokens], dim=1)
-                uncond_enc_input = torch.cat([null_v, audio_emb_tokens], dim=1)
-
-                extend_mask = torch.cat([pad_mask, torch.ones(audio_emb_tokens.shape[0], audio_emb_tokens.shape[1]).to(audio_emb_tokens.device)], dim=1)
-                extend_mask = (extend_mask > 0)
-
-                dec_input = self.encoder(torch.cat([enc_input, uncond_enc_input], dim=0), split_pos=v.shape[1], av_order=['v', 'a'])
-                # dec_input = self.encoder(torch.cat([v, audio_emb_tokens], dim=1), split_pos=v.shape[1], av_order=['v', 'a'])
-                # uncond_dec_input = self.encoder(torch.cat([null_v, audio_emb_tokens], dim=1), split_pos=v.shape[1], av_order=['v', 'a'])
-                # B, K, T, D
-                # dec_input = latents + self.decoder_pos_embed_learned
-                # out: b, t, d
-                out = self.decoder(dec_input)
-                # uncond_out = self.decoder(uncond_dec_input)
-                # logits: b, k, t, d
-                audio_logits = torch.stack([self.classifier[k](out[:1, v.shape[1]:]) for k in range(4)], dim=1)
-                uncond_audio_logits = torch.stack([self.classifier[k](out[1:, v.shape[1]:]) for k in range(4)], dim=1)
-                audio_logits = uncond_audio_logits + (audio_logits - uncond_audio_logits) * cfg_coef
-                
-                # b (d k) t -> b d (t k) -> b (t k) d
-                audio_logits = rearrange(audio_logits, "b k t d -> b (k t) d")
-                b = audio_logits.shape[0]
-                # audio_logits = top_k(audio_logits, k=256)
-                # selected_probs, sampled_a = gumbel_sample(audio_logits, temperature=mask_temperature * _gamma(r))
-
-                # b (k t) d
-                if i < sampling_steps:
-                    should_sample = (i / sampling_steps) <= sample_cutoff
-                else:
-                    should_sample = ((i - sampling_steps + thres) / sampling_steps) <= sample_cutoff
-                sampled_a, selected_probs = sample_from_logits(
-                    audio_logits, sample=should_sample,
-                    temperature=mask_temperature * _gamma(r),
-                    typical_filtering=typical_filtering,
-                    typical_mass=typical_mass,
-                    typical_min_tokens=typical_min_tokens,
-                    top_k=256,
-                    top_p=top_p,
-                    return_probs=True,
-                )
-                # flatten z_masked and mask, so we can deal with the sampling logic
-                # we'll unflatten them at the end of the loop for the next forward pass
-                # remove conditioning codebooks, we'll add them back at the end
-                # b k t -> b (t k)
-                masked_a = codebook_flatten(masked_a)
-
-                mask = (masked_a == self.mask_token).int()
-                # print(masked_a.shape, sampled_a.shape, mask.shape)
-                sampled_a = torch.where(mask.bool(), sampled_a, masked_a)
-                selected_probs = torch.where(
-                    mask.bool(), selected_probs, torch.inf
-                )
-                num_to_mask = torch.floor(_gamma(r) * num_mask_tokens_at_start).unsqueeze(1).long() #
-                if i != (sampling_steps - 1) and i != (sampling_steps + (sampling_steps - thres) - 1):
-                    num_to_mask = torch.maximum(
-                        torch.tensor(1),
-                        torch.minimum(
-                            mask.sum(dim=-1, keepdim=True) - 1,
-                            num_to_mask
-                        )
-                    )
-                # new mask
-                uncertainty = mask_temperature * _gamma(r) #* (1 - r) #_gamma_new(r) #(1 - r)
-                mask = mask_by_random_topk(
-                    num_to_mask, selected_probs, uncertainty #mask_temperature * (1 - r)
-                )
-                # mask = mask_by_topk(num_to_mask, selected_probs)
-                if i == thres:
-                    mask_before_half = mask.clone()
-                # update mask
-                masked_a = torch.where(
-                    mask.bool(), self.mask_token, sampled_a
-                )
-                masked_a = codebook_unflatten(masked_a, n_infer_codebooks)
-                mask = codebook_unflatten(mask, n_infer_codebooks)
-                if i == sampling_steps - 1:
-                    break
-                    sampled_a = codebook_unflatten(sampled_a, n_infer_codebooks)
-                    # mask_before_half = codebook_unflatten(mask_before_half, n_infer_codebooks)
-                    mask_before_half = torch.ones_like(sampled_a).to(v.device).int()
-                    mask_before_half[:,:2,:] = 0
-                    masked_a = sampled_a.masked_fill((mask_before_half).bool(), self.mask_token)
-                    # print(mask_before_half, torch.sum(mask_before_half), mask_before_half.shape)
-                    # print(masked_a)
-                    # print(self.mask_token)
-                    # print("-" * 10)
-                
-                # add conditioning codebooks back to z_masked
-                # masked_a = torch.cat(
-                #     (a[:, :self.n_conditioning_codebooks, :], masked_a), dim=1
-                # )
-            sampled_a = codebook_unflatten(sampled_a, n_infer_codebooks)
-            # add conditioning codebooks back to sampled_z
-            
-            # sampled_a = torch.cat(
-            #     (a[:, :self.n_conditioning_codebooks, :], sampled_a), dim=1
-            # )
-            return sampled_a
 
 
 def gumbel_noise_like(t):
@@ -1395,12 +853,3 @@ def typical_filter(
     x_flat = x_flat.masked_fill(indices_to_remove, -float("Inf"))
     logits = rearrange(x_flat, "(b t) l -> b t l", t=nt)
     return logits
-
-
-# if __name__ == "__main__":
-#     # model = VT2AModel(audio_cb_path="/pscratch/sd/x/xiuliu/meta_pretrain_vgg_encodec_embed.pt")
-#     model = VT2AModel(audio_cb_path="/pscratch/sd/x/xiuliu/dac_quantizer.pth")
-#     model.cuda()
-#     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
-#     params = sum([np.prod(p.size()) for p in model_parameters])
-#     print("number of trainable params: ", params)

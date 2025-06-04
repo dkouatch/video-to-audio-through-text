@@ -1,38 +1,16 @@
 
-import sys
-
-import os
-import random
 import torch
 import torch.nn as nn
-from typing import List
-import numpy as np
-import fire
-import torch
-import transformers
-from datasets import load_dataset
-import sys
-import os, argparse
 from tqdm import tqdm
-import torch.nn.functional as F
-import torchaudio
-import json
-import torch
-from time import time
 from peft import (
     LoraConfig,
-    get_peft_model,
-    get_peft_model_state_dict,
-    prepare_model_for_int8_training,
-    set_peft_model_state_dict,
+    get_peft_model
 )
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, LlamaConfig
-from utils.prompter import Prompter
+from transformers import LlamaForCausalLM
 from vt2a.modules.vt2a_mlm_alibi_uni_coder import VT2AModel
 import pytorch_lightning as pl
 from vt2a.util import instantiate_from_config
 from torch.optim.lr_scheduler import LambdaLR
-from vt2a.lr_scheduler import NoamScheduler
 
 from accelerate.hooks import AlignDevicesHook
 
@@ -105,7 +83,6 @@ class V2TA(pl.LightningModule):
         input_ids, video_input, attention_mask, audio_tokens = x["input_ids"], x["video_input"], x["attention_mask"], x["audio_tokens"]
         with torch.no_grad():
             v_hidden_states = self.encoder.model.model.encode_all_states(input_ids, video_input, attention_mask)[0]
-        # self.audio_token_decoder.to(self.device)
         logits, t_masked = self.audio_token_decoder(audio_tokens, v_hidden_states.float(), attention_mask.float())
         return logits, t_masked
     
@@ -142,10 +119,7 @@ class V2TA(pl.LightningModule):
         # self.encoder_tokenizer.padding_side = "left"  # Allow batched inference
         # cutoff_len = 108
         lora_r, lora_alpha, lora_dropout = 16, 32, 0.0
-        # if self.finetune_llm:
         lora_target_modules = ["q_proj", "v_proj"]
-        # else:
-        #     lora_target_modules = ["dummy"]
         config = LoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
@@ -164,10 +138,6 @@ class V2TA(pl.LightningModule):
         self.encoder.model.lm_head = nn.Identity()
 
         for name, param in self.encoder.named_parameters():
-            # if "lora" in name:
-            #     # print(name)
-            #     # print(param.requires_grad)
-            #     continue
             param.requires_grad = False
         self.encoder.eval()
     
@@ -177,22 +147,15 @@ class V2TA(pl.LightningModule):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"].half()
         audio_tokens = audio_tokens.to(memory_format=torch.contiguous_format).long()
-        # if bs is not None:
-        #     audio_tokens = audio_tokens[:bs]
-        #     img_embs = img_embs[:bs]
         audio_tokens = audio_tokens.to(self.device)
         img_embs = img_embs.to(self.device)
         input_ids = input_ids.to(self.device)
         attention_mask = attention_mask.to(self.device)
         return {"audio_tokens": audio_tokens, "video_input": img_embs, "input_ids": input_ids, "attention_mask": attention_mask}
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch):
         inputs = self.get_input(batch, train=True)
-        logits, labels = self(inputs)#, critic_logits, critic_labels = self(inputs)
-        # critic_loss = F.binary_cross_entropy_with_logits(
-        #     critic_logits,#rearrange(critic_logits, '... 1 -> ...'),
-        #     critic_labels
-        # )
+        logits, labels = self(inputs)
         total_loss = self.loss(logits, labels)# + critic_loss
         log_dict_tot = {
             "train/total_loss": total_loss.clone().detach().mean()
@@ -221,7 +184,6 @@ class V2TA(pl.LightningModule):
 
     def configure_optimizers(self):
         lr = self.learning_rate
-        # opt = torch.optim.AdamW([param for param in self.parameters() if param.requires_grad == True], lr=lr)
         params = []
         for name, param in self.named_parameters():
             if name.startswith('model.quantizer'):
@@ -248,18 +210,9 @@ class V2TA(pl.LightningModule):
         return opt
 
     @torch.no_grad()
-    def generate_audio(self, x, mask_temperature=15.5, temp=1.0, cfg_coef=5.): # temp 0.7 for vgg
+    def generate_audio(self, x, mask_temperature=15.5, temp=1.0, cfg_coef=5.):
         input_ids, video_input, attention_mask = x["input_ids"], x["video_input"], x["attention_mask"]
         v_hidden_states = self.encoder.model.model.encode_all_states(input_ids, video_input, attention_mask)[0]
         out = self.audio_token_decoder.generate_audio_sample(v_hidden_states.float(), attention_mask.float(), mask_temperature=mask_temperature, sampling_temperature=temp, cfg_coef=cfg_coef)
-        return out
-    
-
-    @torch.no_grad()
-    def generate_audio_sample_cond(self, x, mask_temperature=15.5, temp=1.0, cfg_coef=5.):
-        input_ids, video_input, attention_mask = x["input_ids"], x["video_input"], x["attention_mask"]
-        v_hidden_states = self.encoder.model.model.encode_all_states(input_ids, video_input, attention_mask)[0] #torch.zeros_like(video_input)
-        # vt_hidden_states = self.encoder.model.model.encode_all_states(input_ids, video_input, attention_mask)[0]
-        out = self.audio_token_decoder.generate_audio_sample_cond_text(v_hidden_states.float(), v_hidden_states.float(), attention_mask.float(), mask_temperature=mask_temperature, sampling_temperature=temp, cfg_coef=cfg_coef)
         return out
         

@@ -52,9 +52,12 @@ We include our full code implementations in vatt folder, including both stages: 
 **Pretraiend Encodec codebooks**
 [Download Link](https://drive.google.com/file/d/1LdGOtB1s91Lc6Gi45ZD9cSZp6-1qHhLP)
 
-## Instructions to inference VATT-LLama-T
-1. run the script "vt2a_mlm_ff_generation.py" to generate the audio tokens and save to a folder.
-2. run the script "encodec2audio.py" to recover the audio waveform from the audio tokens.
+## Instructions to inference of VATT-LLama-T (inference of other variants of VATT are similar)
+1. Set up the environment (The project has been tested on Linux enviroment): create a conda environment with Python 3.10 with torch version 2.0.1 and cuda 11.7. Then run the ``pip install -r requirements.txt" under the vatt folder. Then go to the folder "third_party/hf-dev/transformers" and "third_party/peft" respectively to install modified version of these two libraries (required by vatt) using "pip install -e ."
+
+2. Go to the folder vatt/vt2a and add PYTHONPAPTH by "export PYTHONPATH=/path/to/vatt:$PYTHONPATH".  Run the script "vt2a_mlm_ff_generation.py" to generate the audio tokens and save to a folder of your choice. Before running, make sure to configure all required paths of model checkpoints and data (those occurences of "/path/to/" in vt2a_mlm_ff_generation.py) for correct paths. Also, make sure to configure required paths in the yaml config file in ``configs/vt2a_mlm_alibi_mix_large_unicodec_vgg_stage_2.yaml''.
+
+3. Run the script "encodec2audio.py" to recover the audio waveform from the audio tokens. This step requires a different transformers library version ``transformers==4.31" (needed by AudioGen library)
 
 
 ## Sample Outputs & Demo Website
@@ -94,4 +97,4 @@ Or
 ```
 
 ## Contact
-For any questions regarding the code, model checkpoints and dataset, please reach out directly to [email](xl1995@uw.edu)
+For any questions regarding the code, model checkpoints and dataset, please reach out directly to [email](liuxiulong1995@gmail.com)

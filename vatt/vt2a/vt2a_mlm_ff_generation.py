@@ -49,10 +49,6 @@ def load_model_from_config(config, ckpt, verbose=True, ignore_keys=[]):
     print(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, map_location="cpu")
     sd = pl_sd["state_dict"]
-    for key, val in sd.items():
-        print("XXX", key)
-        if "default" in key:
-            print("DDD", val)
     keys = list(sd.keys())
     model = instantiate_from_config(config.model)
     for k in keys:
@@ -81,7 +77,7 @@ if __name__ == "__main__":
         "--save_path",
         type=str,
         required=True,
-        help="The path to save model output",
+        help="The path to save model output (audio tokens)",
         default='/path/to/save'
     )
 
@@ -96,8 +92,8 @@ if __name__ == "__main__":
         "--meta_dir",
         type=str,
         required=False,
-        help="The path to meta data dir",
-        default="/path/to/vggsound meta (vggsound_test.txt)",
+        help="The path to vggsound_test.txt dir",
+        default="./",
     )
 
     parser.add_argument(
@@ -128,7 +124,7 @@ if __name__ == "__main__":
     all_time = []
 
     prompter = Prompter("alpaca_short")
-    tokenizer = LlamaTokenizer.from_pretrained("../v2cap/pretrained_mdls/vicuna/")
+    tokenizer = LlamaTokenizer.from_pretrained("/path/to/pretrained_mdls/vicuna/")
     tokenizer.pad_token_id = (0)  # unk. we want this to be different from the eos token
     tokenizer.padding_side = "left"
 

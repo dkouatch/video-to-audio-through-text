@@ -96,8 +96,8 @@ if __name__ == "__main__":
         "--meta_dir",
         type=str,
         required=True,
-        help="The path to meta data dir",
-        default="/path/to/vggsound meta (vggsound_test.txt)",
+        help="The path to vggsound_test.txt dir",
+        default="./",
     )
 
     parser.add_argument(
