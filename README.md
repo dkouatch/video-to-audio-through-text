@@ -41,7 +41,7 @@ We include our full code implementations in vatt folder, including both stages: 
 
 ## Checkpoints
 **VATT Full Models (including LLama and Gemma version, 4 checkpoints in total in the zip file)**
-[Download Link](https://www.dropbox.com/scl/fi/o1663dvgavdtgryltqvmq/vatt_models.zip?rlkey=yzk7o6fb6kpdvs7mnke03t3c0&st=ou5y6q3s&dl=0)
+[Download Link](https://www.dropbox.com/scl/fi/o1663dvgavdtgryltqvmq/vatt_models.zip?rlkey=yzk7o6fb6kpdvs7mnke03t3c0&st=wr75y7xn&dl=0)
 
 **Full AudioGen-Encodec model checkpoint being used for converting tokens back to audio waveform**
 [Download Link](https://www.dropbox.com/scl/fi/48nasacz1qikulwv4nj87/audiogen_models.zip?rlkey=3j4beimh2q8h9rw3jmd1mxqsd&st=lbv24b4c&dl=0)
