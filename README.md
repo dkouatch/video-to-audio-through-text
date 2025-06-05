@@ -32,7 +32,7 @@ Here, we provide links to our **V2A Instruction Dataset** and **extracted video 
 [Download Link](https://drive.google.com/file/d/1Mgb1CWNqL99q4DWh57derAfDdQeOEkBp/view?usp=drive_link) 
 
 **Extracted audio tokens from VGGSound audio using Encodec-16kHz**
-[Download Link](https://www.dropbox.com/scl/fi/iolaary8vafx1qtbfshu5/meta_pretrain_vgg_encodec_tokens.zip?rlkey=p68919e41yyp9osy525vkq3ig&st=kam53u71&dl=0)
+[Download Link](https://drive.google.com/file/d/1_dYe52NcsG0fkvgMa4ixaFQtj1Xwqovv/view?usp=drive_link)
 
 > **Note:** Please check the appropriate licenses and usage rights for VGGSound and AudioSet data before using them in your research.
 
