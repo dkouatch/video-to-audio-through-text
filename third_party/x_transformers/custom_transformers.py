@@ -1411,7 +1411,7 @@ class MultiwayNetwork(nn.Module):
             y1, y2 = self.B(x1), self.A(x2)
         return torch.cat([y1, y2], dim=self.dim)
 
-class EncoderAttentionLayersXL(nn.Module):
+class EncoderAttentionLayersKS(nn.Module):
     def __init__(
         self,
         dim,
@@ -1794,7 +1794,7 @@ class EncoderAttentionLayersXL(nn.Module):
         return x
     
 
-class EncoderXL(EncoderAttentionLayersXL):
+class EncoderKS(EncoderAttentionLayersKS):
     def __init__(self, **kwargs):
         assert 'causal' not in kwargs, 'cannot set causality on encoder'
         super().__init__(causal=False, **kwargs)
