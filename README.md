@@ -1,5 +1,7 @@
-# VATT
-This repository contains the **code, datasets, and sample outputs** for [NeurIPS paper](#citation)  
+# VATT (Video-to-Audio Generation Through Text)
+[Xiulong Liu*](https://dragonliu1995.github.io/), [Kun Su](https://kun-su.netlify.app/), [Eli Shlizerman](http://faculty.washington.edu/shlizee/)
+
+Official repository that contains **code, datasets, and sample outputs** for [NeurIPS paper](#citation)  
 **"Tell What You Hear From What You See — Video to Audio Generation Through Text."**, accepted as poster in NeurIPS 2024.
 
 ## Table of Contents
@@ -38,7 +40,7 @@ Here, we provide links to our **V2A Instruction Dataset** and **extracted video 
 > **Note:** Please check the appropriate licenses and usage rights for VGGSound and AudioSet data before using them in your research.
 
 ## Code
-We include our full code implementations in vatt folder, including both stages: video-to-caption stage (v2cap) and video+text->audio stage (vt2a). The instructions on how to use the code to train both stages will be updated here below.
+We include our full code implementations in vatt folder, including both stages: video-to-caption stage (v2cap) and video+text->audio stage (vt2a). Instructions for both training and inference are detailed below. 
 
 ## Checkpoints
 **VATT Full Models (including LLama and Gemma version, 4 checkpoints in total in the zip file)**
