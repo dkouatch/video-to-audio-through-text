@@ -4,7 +4,7 @@ import typing as tp
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from third_party.x_transformers.custom_transformers import ContinuousTransformerWrapper, EncoderXL
+from third_party.x_transformers.custom_transformers import ContinuousTransformerWrapper, EncoderKS
 from einops import rearrange, repeat
 from vt2a.modules.pos_embed import np_get_1d_sincos_pos_embed
 from torch.nn.utils import weight_norm
@@ -397,7 +397,7 @@ class VT2AModel(nn.Module):
             max_seq_len=self.audio_seq_len + visual_seq_len,
             use_abs_pos_emb=False,
             emb_dropout = 0.1,  # dropout after embedding
-            attn_layers=EncoderXL(
+            attn_layers=EncoderKS(
                 dim=dim,
                 depth=num_layers,
                 heads=num_heads,
@@ -416,7 +416,7 @@ class VT2AModel(nn.Module):
             max_seq_len=self.visual_seq_len + self.audio_seq_len,
             use_abs_pos_emb=False,
             emb_dropout = 0.1,  # dropout after embedding
-            attn_layers=EncoderXL(
+            attn_layers=EncoderKS(
                 dim=dim,
                 depth=dec_num_layers,
                 heads=dec_num_heads,
