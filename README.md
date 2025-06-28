@@ -27,6 +27,12 @@ Take a look at the cool demo here generating audio for Sora videos:
 
 https://github.com/user-attachments/assets/e5ce71fc-5a57-493d-abee-341f4c4eb4c8
 
+
+
+https://github.com/user-attachments/assets/f0a2ec41-c6b5-49a2-9d33-cae4fba464af
+
+
+
 If you find this repository helpful in your research, please consider citing our paper (see [Citation](#citation)).
 
 ## Datasets
