@@ -6,8 +6,7 @@
 
 
 
-Official repository that contains **code, datasets, and sample outputs** for [NeurIPS paper](#citation)  
-**"Tell What You Hear From What You See — Video to Audio Generation Through Text."**, accepted as poster in NeurIPS 2024.
+Official repository that contains **code, datasets, and sample outputs** for [NeurIPS paper](#citation)  **"Tell What You Hear From What You See — Video to Audio Generation Through Text"**, accepted as poster in NeurIPS 2024.
 
 ## Table of Contents
 1. [Introduction](#introduction)  
