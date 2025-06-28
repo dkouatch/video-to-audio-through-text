@@ -1,6 +1,11 @@
 # VATT (Video-to-Audio Generation Through Text)
 [Xiulong Liu*](https://dragonliu1995.github.io/), [Kun Su](https://kun-su.netlify.app/), [Eli Shlizerman](http://faculty.washington.edu/shlizee/)
 
+
+
+
+
+
 Official repository that contains **code, datasets, and sample outputs** for [NeurIPS paper](#citation)  
 **"Tell What You Hear From What You See — Video to Audio Generation Through Text."**, accepted as poster in NeurIPS 2024.
 
@@ -16,7 +21,11 @@ Official repository that contains **code, datasets, and sample outputs** for [Ne
 9. [Contact](#contact)
 
 ## Introduction
-**VATT (Video-to-Audio Generation Through Text)** is a multi-modal generative framework that takes a video and an optional text prompt as input, and generates audio and optional textual description of the audio. Such a framework has two advantages: i) Video-to-Audio generation process can be refined and controlled via text which complements the context of visual information, and ii) The model can suggest what audio to generate for the video by generating audio captions. VATT consists of two key modules: VATT Converter, a LLM that is fine-tuned for instructions and includes a projection layer that maps video features to the LLM vector space; and VATT Audio, a transformer that generates audio tokens from visual frames and from optional text prompt using iterative parallel decoding. The audio tokens are converted to a waveform by pretrained neural codec. 
+**VATT (Video-to-Audio Generation Through Text)** is a multi-modal generative framework in **pure discrete space** that takes a video and an optional text prompt as input, and generates audio and optional textual description of the audio. Such a framework has two advantages: i) Video-to-Audio generation process can be refined and controlled via text which complements the context of visual information, and ii) The model can suggest what audio to generate for the video by generating audio captions. VATT consists of two key modules: VATT Converter, a LLM that is fine-tuned for instructions and includes a projection layer that maps video features to the LLM vector space; and VATT Audio, a transformer that generates audio tokens from visual frames and from optional text prompt using iterative parallel decoding. The audio tokens are converted to a waveform by pretrained neural codec. 
+
+Take a look at the cool demo here generating audio for Sora videos:
+
+https://github.com/user-attachments/assets/e5ce71fc-5a57-493d-abee-341f4c4eb4c8
 
 If you find this repository helpful in your research, please consider citing our paper (see [Citation](#citation)).
 
