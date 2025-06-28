@@ -1,5 +1,5 @@
 # VATT (Video-to-Audio Generation Through Text)
-[Xiulong Liu*](https://dragonliu1995.github.io/), [Kun Su](https://kun-su.netlify.app/), [Eli Shlizerman](http://faculty.washington.edu/shlizee/)
+[Xiulong Liu](https://dragonliu1995.github.io/), [Kun Su](https://kun-su.netlify.app/), [Eli Shlizerman](http://faculty.washington.edu/shlizee/)
 
 
 
