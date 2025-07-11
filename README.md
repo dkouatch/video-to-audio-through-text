@@ -9,15 +9,16 @@
 Official repository that contains **code, datasets, and sample outputs** for [NeurIPS paper](#citation)  **"Tell What You Hear From What You See — Video to Audio Generation Through Text"**, accepted as poster in NeurIPS 2024.
 
 ## Table of Contents
-1. [Introduction](#introduction)  
-2. [Datasets](#datasets)  
-3. [Code](#code)
-4. [Checkpoints](#checkpoints)
-5. [Inference-Instructions](#inference-instructions)
-6. [Training-Instructions](#training-instructions)
-7. [Samples-and-Demo](#samples-and-demo)
-8. [Citation](#citation)
-9. [Contact](#contact)
+1. [Introduction](#introduction)
+2. [Installation](#installation)  
+3. [Datasets](#datasets)
+4. [Code](#code)
+5. [Checkpoints](#checkpoints)
+6. [Inference-Instructions](#inference-instructions)
+7. [Training-Instructions](#training-instructions)
+8. [Samples-and-Demo](#samples-and-demo)
+9. [Citation](#citation)
+10. [Contact](#contact)
 
 ## Introduction
 **VATT (Video-to-Audio Generation Through Text)** is a multi-modal generative framework in **pure discrete space** that takes a video and an optional text prompt as input, and generates audio and optional textual description of the audio. Such a framework has two advantages: i) Video-to-Audio generation process can be refined and controlled via text which complements the context of visual information, and ii) The model can suggest what audio to generate for the video by generating audio captions.
@@ -61,6 +62,10 @@ https://github.com/user-attachments/assets/d3919dd9-b8b7-421f-a740-a5652a818c5a
 
 ✨ If you find this repository helpful for your research, please give us a star ⭐ and consider citing our paper (see [Citation](#citation)).
 
+
+## Installation
+For ease of usage, just follow the commands in ``setup_inference.sh`` to set up the environment for VATT inference. The installation steps assume Linux environment. Also, we assume that the inference runs using GPU with cuda. And this script successfully runs on a single A100 40GB GPU.
+
 ## Datasets
 Here, we provide links to our **V2A Instruction Dataset** and **extracted video and audio features from visual and audio encoders**.
 ### V2A Instruction Dataset
@@ -102,6 +107,7 @@ We include our full code implementations in vatt folder, including both stages: 
 [Download Link](https://drive.google.com/file/d/1LdGOtB1s91Lc6Gi45ZD9cSZp6-1qHhLP)
 
 ## Inference-Instructions
+**You can skip this if you already follow the ``setup_inference.sh`` to perform inference, this section is a more detailed explanation.**
 Below we show setup of VATT-LLama-T inference, other variants of VATT inference are similar.
 
 1. Set up the environment (The project has been tested on Linux enviroment):
