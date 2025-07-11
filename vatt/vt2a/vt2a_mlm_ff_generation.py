@@ -129,11 +129,11 @@ if __name__ == "__main__":
     tokenizer.padding_side = "left"
 
     import json
-    with open("/path/to/vgg_test_5_per_class_for_retrieval_cleaned.json", "r") as fin:
-        test_small_split = json.load(fin)["data"]
-    test_small_set = set()
-    for item in test_small_split:
-        test_small_set.add(item["video_id"])
+    # with open("/path/to/vgg_test_5_per_class_for_retrieval_cleaned.json", "r") as fin:
+    #     test_small_split = json.load(fin)["data"]
+    # test_small_set = set()
+    # for item in test_small_split:
+    #     test_small_set.add(item["video_id"])
 
     # GT captions
     VGG_PROMPT_PATH = '/path/to/vggsound_v2a_instruction.json'
