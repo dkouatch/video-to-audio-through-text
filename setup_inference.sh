@@ -2,12 +2,11 @@
 conda create vatt_env python=3.10
 conda activate vatt_env
 pip install torch==2.0.1+cu117 torchvision==0.15.2+cu117 torchaudio==2.0.2+cu117 --extra-index-url https://download.pytorch.org/whl/cu117
-pip install --upgrade-strategy only-if-needed -r requirements.txt
-pip install gdown open-clip-torch
-
 
 git clone https://github.com/DragonLiu1995/video-to-audio-through-text.git
 cd video-to-audio-through-text
+pip install --upgrade-strategy only-if-needed -r vatt/requirements.txt
+pip install gdown open-clip-torch
 pip install -e third_party/hf-dev/transformers-main
 pip install -e thrid_party/peft-main
 
