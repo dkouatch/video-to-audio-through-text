@@ -107,7 +107,8 @@ We include our full code implementations in vatt folder, including both stages: 
 [Download Link](https://drive.google.com/file/d/1LdGOtB1s91Lc6Gi45ZD9cSZp6-1qHhLP)
 
 ## Inference-Instructions
-**You can skip this if you already follow the ``setup_inference.sh`` to perform inference, this section is a more detailed explanation.**
+(**You can skip this if you already follow the ``setup_inference.sh`` to perform inference, this section is a more detailed explanation.**)
+
 Below we show setup of VATT-LLama-T inference, other variants of VATT inference are similar.
 
 1. Set up the environment (The project has been tested on Linux enviroment):
