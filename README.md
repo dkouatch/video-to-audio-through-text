@@ -112,7 +112,7 @@ Below we show setup of VATT-LLama-T inference, other variants of VATT inference 
          pip install torch==2.0.1+cu117 torchvision==0.15.2+cu117 torchaudio==2.0.2+cu117 --extra-index-url https://download.pytorch.org/whl/cu117
       ```
    -  Go to ``vatt`` folder, and run ``pip install -r requirements.txt``.
-   -  Go to the folder "third_party/hf-dev/transformers" and "third_party/peft" respectively to install modified version of these two libraries (required by vatt) using "pip install -e ."
+   -  Go to the folder "third_party/hf-dev/transformers-main" and "third_party/peft-main" respectively to install modified version of these two libraries (required by vatt) using "pip install -e ."
 
 2. Go to the folder vatt/vt2a and add PYTHONPAPTH by "export PYTHONPATH=/path/to/vatt:$PYTHONPATH".  Run the script "vt2a_mlm_ff_generation.py" to generate the audio tokens and save to a folder of your choice. Before running, make sure to configure all required paths of model checkpoints and data (those occurences of "/path/to/" in vt2a_mlm_ff_generation.py) for correct paths. Also, make sure to configure required paths in the yaml config file in ``configs/vt2a_mlm_alibi_mix_large_unicodec_vgg_stage_2.yaml''.
 
