@@ -49,12 +49,10 @@ python ./vatt/vt2a/vt2a_mlm_ff_generation.py -s ./vatt/gen_tokens --img_embs_dir
 
 
 # Stage 2: Create the env for audiocraft in order to use Encodec model to decode generated tokens into audio waveforms.
-conda create --prefix encodec_env python=3.9
+conda create encodec_env python=3.9
 conda activate encodec_env
 python -m pip install 'torch==2.1.0'
-# You might need the following before trying to install the packages
 python -m pip install setuptools wheel
-# Then proceed to one of the following
 python -m pip install -U audiocraft  # stable release
 
 # Decode the generated audio tokens back to audio waveforms.
