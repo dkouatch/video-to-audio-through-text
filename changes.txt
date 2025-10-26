@@ -1,0 +1,8 @@
+In requirements.txt
+
+“CUDA-specific modules (whisper-at, triton, flash-attn, bitsandbytes)
+were removed due to MPS incompatibility; equivalent inference was 
+run using OpenAI Whisper and standard PyTorch attention on Apple MPS.”
+
+In setup_inference.sh
+
