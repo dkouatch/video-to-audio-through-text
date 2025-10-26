@@ -1,6 +1,6 @@
 # Stage 1: Create the env for VATT in order to generate audio tokens from multi-modal conditions, i.e., video + text (optional)
-conda create vatt_env python=3.10
-conda activate vatt_env
+# conda create vatt_env python=3.10
+# conda activate vatt_env
 pip install torch==2.1.0 torchvision==0.15.2 torchaudio==2.0.2 --extra-index-url https://download.pytorch.org/whl/cu118
 
 git clone https://github.com/dkouatch/video-to-audio-through-text.git
@@ -49,8 +49,8 @@ python ./vatt/vt2a/vt2a_mlm_ff_generation.py -s ./vatt/gen_tokens --img_embs_dir
 
 
 # Stage 2: Create the env for audiocraft in order to use Encodec model to decode generated tokens into audio waveforms.
-conda create encodec_env python=3.9
-conda activate encodec_env
+# conda create encodec_env python=3.9
+# conda activate encodec_env
 python -m pip install 'torch==2.1.0'
 python -m pip install setuptools wheel
 python -m pip install -U audiocraft  # stable release
