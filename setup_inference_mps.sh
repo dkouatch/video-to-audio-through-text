@@ -1,11 +1,14 @@
 # Stage 1: Create the env for VATT in order to generate audio tokens from multi-modal conditions, i.e., video + text (optional)
-conda create vatt_env python=3.10
-conda activate vatt_env
-pip install torch==2.1.0 torchvision==0.15.2 torchaudio==2.0.2 --extra-index-url https://download.pytorch.org/whl/cu118
+conda create --name vatt_mps_env python=3.10
+conda activate vatt_mps_env
+pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
+
+# fallback: if MPS lacks an operator, PyTorch will run that op on CPU
+conda env config vars set PYTORCH_ENABLE_MPS_FALLBACK=1
 
 git clone https://github.com/dkouatch/video-to-audio-through-text.git
 cd video-to-audio-through-text
-pip install --upgrade-strategy only-if-needed -r vatt/requirements.txt
+pip install --upgrade-strategy only-if-needed -r vatt/requirements_mps.txt
 pip install gdown open-clip-torch
 pip install -e third_party/hf-dev/transformers-main
 pip install -e third_party/peft-main
